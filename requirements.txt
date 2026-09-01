@@ -8,4 +8,3 @@ requests
 schedule
 gunicorn
 eventlet
-python-dotenv
