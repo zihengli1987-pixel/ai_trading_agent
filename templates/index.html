@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🤖 AI Agent 交易仪表板</title>
+    <title>🤖 AI Agent 交易仪表板 v3.0</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -13,244 +13,430 @@
             padding: 20px;
             min-height: 100vh;
         }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0a0e17; }
+        ::-webkit-scrollbar-thumb { background: #1e2a3a; border-radius: 3px; }
+        
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
             border-bottom: 1px solid #1e2a3a;
         }
-        .header h1 {
-            font-size: 28px;
-            background: linear-gradient(135deg, #00d4ff, #7b2ffc);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .header .subtitle { font-size: 14px; color: #666; }
+        .header-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .header h1 { font-size: 22px; background: linear-gradient(135deg, #00d4ff, #7b2ffc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header .badge { font-size: 10px; padding: 2px 10px; border-radius: 10px; background: #00c853; color: #fff; -webkit-text-fill-color: #fff; }
+        .header .subtitle { font-size: 12px; color: #666; }
         .header .subtitle span { color: #00d4ff; }
+        .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .update-time { font-size: 12px; color: #666; }
+        .refresh-btn {
+            background: #1e2a3a;
+            border: none;
+            color: #e0e0e0;
+            padding: 5px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover { background: #2a3a5a; }
+        .refresh-btn:active { transform: scale(0.95); }
+        .refresh-btn.loading { opacity: 0.5; pointer-events: none; }
+        
+        .top-notice {
+            background: #111b28;
+            border-radius: 8px;
+            padding: 8px 14px;
+            margin-bottom: 14px;
+            border: 1px solid #1e2a3a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .top-notice .info { font-size: 11px; color: #888; }
+        .top-notice .info strong { color: #00d4ff; }
+        .top-notice .actions a { color: #00d4ff; text-decoration: none; font-size: 11px; margin-left: 10px; }
+        .top-notice .actions a:hover { text-decoration: underline; }
+        
         .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 10px;
+            margin-bottom: 16px;
         }
         .stat-card {
             background: #111b28;
-            border-radius: 12px;
-            padding: 16px 20px;
+            border-radius: 8px;
+            padding: 10px 12px;
             border: 1px solid #1e2a3a;
             text-align: center;
         }
-        .stat-card .number { font-size: 28px; font-weight: bold; }
-        .stat-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+        .stat-card .number { font-size: 22px; font-weight: bold; }
         .stat-card .number.green { color: #00c853; }
         .stat-card .number.yellow { color: #ffab00; }
         .stat-card .number.red { color: #ff1744; }
         .stat-card .number.blue { color: #00d4ff; }
         .stat-card .number.purple { color: #7b2ffc; }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 16px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: #111b28;
-            border-radius: 12px;
-            padding: 18px 20px;
-            border: 1px solid #1e2a3a;
-            transition: transform 0.2s;
-        }
-        .card:hover { transform: translateY(-3px); border-color: #2a3a5a; }
-        .card .top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .card .symbol { font-size: 18px; font-weight: bold; color: #00d4ff; }
-        .card .name { font-size: 12px; color: #666; margin-top: 2px; }
-        .card .score-badge {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        .card .score-badge.high { background: #00c853; color: #fff; }
-        .card .score-badge.medium { background: #ffab00; color: #000; }
-        .card .score-badge.low { background: #ff1744; color: #fff; }
-        .card .price-section { margin: 12px 0 4px 0; }
-        .card .price { font-size: 22px; font-weight: bold; }
-        .card .change { font-size: 14px; margin-left: 10px; }
-        .card .change.up { color: #00c853; }
-        .card .change.down { color: #ff1744; }
-        .card .signal { font-size: 14px; margin-top: 2px; }
-        .card .signal.strong_buy { color: #00c853; }
-        .card .signal.buy { color: #69f0ae; }
-        .card .signal.watch { color: #ffab00; }
-        .card .signal.avoid { color: #ff1744; }
-        .trade-plan {
-            background: #0d1520;
-            border-radius: 8px;
-            padding: 10px 14px;
-            margin-top: 12px;
-            border: 1px solid #1a2636;
-        }
-        .trade-plan .row {
-            display: flex;
-            justify-content: space-between;
-            font-size: 12px;
-            padding: 2px 0;
-        }
-        .trade-plan .label { color: #666; }
-        .trade-plan .value { font-weight: bold; }
-        .trade-plan .value.green { color: #00c853; }
-        .trade-plan .value.red { color: #ff1744; }
-        .trade-plan .value.gold { color: #ffab00; }
-        .trade-plan .value.blue { color: #00d4ff; }
-        .trade-plan .divider { border-top: 1px solid #1a2636; margin: 4px 0; }
-        .card .ma-info {
-            font-size: 11px;
-            color: #555;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #1a2636;
-        }
-        .footer {
-            background: #111b28;
-            border-radius: 12px;
-            padding: 16px 20px;
-            border: 1px solid #1e2a3a;
-            text-align: center;
-            font-size: 14px;
-        }
-        .footer .online { color: #00c853; }
-        .footer .highlight { color: #00d4ff; }
-        .refresh-btn {
-            background: #1e2a3a;
-            border: none;
-            color: #e0e0e0;
-            padding: 8px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .refresh-btn:hover { background: #2a3a5a; }
-        .loading {
-            text-align: center;
-            padding: 60px 20px;
-            color: #666;
-        }
-        .loading .spinner {
-            display: inline-block;
-            width: 40px;
-            height: 40px;
-            border: 3px solid #1e2a3a;
-            border-top-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 600px) {
-            .header h1 { font-size: 20px; }
-            .grid { grid-template-columns: 1fr; }
-        }
+        .stat-card .number.orange { color: #ff9100; }
+        .stat-card .label { font-size: 10px; color: #666; margin-top: 2px; }
+        
         .filter-bar {
             display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
+            gap: 6px;
+            margin-bottom: 14px;
             flex-wrap: wrap;
+            align-items: center;
+            background: #0d1520;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #1a2636;
         }
+        .filter-bar .filter-label { font-size: 11px; color: #666; }
         .filter-btn {
-            background: #111b28;
+            background: transparent;
             border: 1px solid #1e2a3a;
             color: #666;
-            padding: 6px 16px;
-            border-radius: 20px;
+            padding: 3px 12px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 11px;
             transition: all 0.2s;
         }
         .filter-btn:hover { border-color: #00d4ff; color: #fff; }
         .filter-btn.active { border-color: #00d4ff; color: #00d4ff; background: #0d1520; }
+        .filter-btn .count { font-size: 9px; opacity: 0.6; margin-left: 2px; }
+        
+        .sort-options { display: flex; gap: 4px; align-items: center; margin-left: 10px; }
+        .sort-options .sort-label { font-size: 10px; color: #555; }
+        .sort-btn {
+            background: transparent;
+            border: none;
+            color: #555;
+            font-size: 10px;
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        .sort-btn:hover { color: #fff; }
+        .sort-btn.active { color: #00d4ff; background: #1a2636; }
+        
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #111b28;
+            border: 1px solid #1e2a3a;
+            border-radius: 12px;
+            padding: 3px 10px;
+            margin-left: auto;
+        }
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: #e0e0e0;
+            font-size: 11px;
+            padding: 3px 0;
+            width: 100px;
+            outline: none;
+        }
+        .search-box input::placeholder { color: #444; }
+        .search-box .icon { color: #444; font-size: 12px; }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .card {
+            background: #111b28;
+            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1px solid #1e2a3a;
+            transition: all 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); border-color: #2a3a5a; }
+        .card .top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .card .symbol { font-size: 16px; font-weight: bold; color: #00d4ff; }
+        .card .name { font-size: 10px; color: #666; margin-top: 1px; }
+        .card .sector-tag {
+            font-size: 8px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            background: #1a2636;
+            color: #555;
+            display: inline-block;
+            margin-top: 1px;
+        }
+        .card .sector-status {
+            font-size: 8px;
+            padding: 1px 6px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-left: 3px;
+        }
+        .card .sector-status.priority { background: #00c85320; color: #00c853; }
+        .card .sector-status.avoid { background: #ff174420; color: #ff1744; }
+        .card .sector-status.neutral { background: #ffab0020; color: #ffab00; }
+        
+        .card .score-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        .card .score-badge.high { background: #00c853; color: #fff; }
+        .card .score-badge.medium { background: #ffab00; color: #000; }
+        .card .score-badge.low { background: #ff1744; color: #fff; }
+        
+        .card .price-section { margin: 8px 0 2px 0; }
+        .card .price { font-size: 18px; font-weight: bold; }
+        .card .change { font-size: 12px; margin-left: 6px; }
+        .card .change.up { color: #00c853; }
+        .card .change.down { color: #ff1744; }
+        .card .signal { font-size: 12px; margin-top: 1px; }
+        .card .signal.strong_buy { color: #00c853; }
+        .card .signal.buy { color: #69f0ae; }
+        .card .signal.watch { color: #ffab00; }
+        .card .signal.avoid { color: #ff1744; }
+        
+        .card .trade-plan {
+            background: #0d1520;
+            border-radius: 5px;
+            padding: 6px 10px;
+            margin-top: 8px;
+            border: 1px solid #1a2636;
+        }
+        .card .trade-plan .row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            padding: 1px 0;
+        }
+        .card .trade-plan .label { color: #555; }
+        .card .trade-plan .value { font-weight: bold; }
+        .card .trade-plan .value.green { color: #00c853; }
+        .card .trade-plan .value.red { color: #ff1744; }
+        .card .trade-plan .value.gold { color: #ffab00; }
+        .card .trade-plan .value.blue { color: #00d4ff; }
+        .card .trade-plan .divider { border-top: 1px solid #1a2636; margin: 2px 0; }
+        
+        .card .ma-info {
+            font-size: 9px;
+            color: #444;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #1a2636;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .card .ma-info .hl { color: #00d4ff; }
+        
+        .card.sector-avoid { border-left: 3px solid #ff1744; }
+        .card.sector-priority { border-left: 3px solid #00c853; }
+        
+        .footer {
+            background: #111b28;
+            border-radius: 8px;
+            padding: 10px 16px;
+            border: 1px solid #1e2a3a;
+            text-align: center;
+            font-size: 11px;
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+        .footer .online { color: #00c853; }
+        .footer .highlight { color: #00d4ff; }
+        .footer .sep { color: #333; }
+        
+        .loading {
+            text-align: center;
+            padding: 30px 20px;
+            color: #666;
+            grid-column: 1 / -1;
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 3px solid #1e2a3a;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .header h1 { font-size: 16px; }
+            .grid { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: repeat(3, 1fr); }
+            .filter-bar { flex-wrap: wrap; }
+            .search-box { margin-left: 0; width: 100%; }
+            .search-box input { width: 100%; }
+            .header-right { width: 100%; justify-content: space-between; }
+            .footer { font-size: 10px; gap: 6px; }
+            .top-notice .info { font-size: 10px; }
+            .sort-options { margin-left: 0; }
+        }
+        @media (max-width: 480px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div>
+        <div class="header-left">
             <h1>🤖 AI Agent 交易仪表板</h1>
-            <div class="subtitle">📊 实时监控 · 智能评分 · <span>自动推送</span></div>
+            <span class="badge">v3.0</span>
+            <div class="subtitle">📊 <span>智能评分</span> · 行业过滤 · 动态风控</div>
         </div>
-        <div style="text-align: right;">
-            <div id="updateTime" style="font-size: 14px; color: #666;">加载中...</div>
-            <button class="refresh-btn" onclick="fetchData()">🔄 刷新</button>
+        <div class="header-right">
+            <span class="update-time" id="updateTime">加载中...</span>
+            <button class="refresh-btn" onclick="fetchData()" id="refreshBtn">🔄 刷新</button>
         </div>
     </div>
 
+    <div class="top-notice">
+        <div class="info">
+            💡 <strong>策略优化</strong>：行业过滤器 · 动态止盈止损 · 优先科技/金融/航空/医疗/零售
+        </div>
+        <div class="actions">
+            <a href="#" onclick="fetchData(); return false;">🔄 刷新数据</a>
+            <a href="/api/stocks" target="_blank">📡 API</a>
+        </div>
+    </div>
+
+    <!-- ===== 统计卡片 ===== -->
     <div class="stats" id="stats">
-        <div class="stat-card"><div class="number blue" id="totalCount">-</div><div class="label">📊 监控股票</div></div>
-        <div class="stat-card"><div class="number green" id="buyCount">-</div><div class="label">🟢 买入信号</div></div>
+        <div class="stat-card"><div class="number blue" id="totalCount">-</div><div class="label">📊 监控</div></div>
+        <div class="stat-card"><div class="number green" id="buyCount">-</div><div class="label">🟢 买入</div></div>
         <div class="stat-card"><div class="number yellow" id="watchCount">-</div><div class="label">🟡 观望</div></div>
         <div class="stat-card"><div class="number red" id="avoidCount">-</div><div class="label">🔴 回避</div></div>
+        <div class="stat-card"><div class="number purple" id="strongBuyCount">-</div><div class="label">🔥 强烈买入</div></div>
+        <div class="stat-card"><div class="number orange" id="filteredCount">-</div><div class="label">🚫 行业过滤</div></div>
     </div>
 
+    <!-- ===== 过滤器栏（包含搜索和排序） ===== -->
     <div class="filter-bar">
-        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">📊 全部</button>
-        <button class="filter-btn" data-filter="strong_buy" onclick="setFilter('strong_buy')">🟢 强烈买入</button>
-        <button class="filter-btn" data-filter="buy" onclick="setFilter('buy')">🟢 买入</button>
-        <button class="filter-btn" data-filter="watch" onclick="setFilter('watch')">🟡 观望</button>
-        <button class="filter-btn" data-filter="avoid" onclick="setFilter('avoid')">🔴 回避</button>
+        <span class="filter-label">📋 筛选：</span>
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">全部 <span class="count" id="countAll">0</span></button>
+        <button class="filter-btn" data-filter="strong_buy" onclick="setFilter('strong_buy')">🔥 强烈买入 <span class="count" id="countStrongBuy">0</span></button>
+        <button class="filter-btn" data-filter="buy" onclick="setFilter('buy')">🟢 买入 <span class="count" id="countBuy">0</span></button>
+        <button class="filter-btn" data-filter="watch" onclick="setFilter('watch')">🟡 观望 <span class="count" id="countWatch">0</span></button>
+        <button class="filter-btn" data-filter="avoid" onclick="setFilter('avoid')">🔴 回避 <span class="count" id="countAvoid">0</span></button>
+        
+        <div class="sort-options">
+            <span class="sort-label">📊 排序：</span>
+            <button class="sort-btn active" data-sort="score" onclick="setSort('score')">评分</button>
+            <button class="sort-btn" data-sort="change" onclick="setSort('change')">涨跌</button>
+            <button class="sort-btn" data-sort="symbol" onclick="setSort('symbol')">代码</button>
+        </div>
+        
+        <div class="search-box">
+            <span class="icon">🔍</span>
+            <input type="text" placeholder="搜索股票..." id="searchInput" oninput="applySearch()">
+        </div>
     </div>
 
+    <!-- ===== 股票列表 ===== -->
     <div class="grid" id="stockGrid">
-        <div class="loading"><div class="spinner"></div><p style="margin-top:16px;">加载中...</p></div>
+        <div class="loading"><div class="spinner"></div><p style="margin-top:10px;">加载数据中...</p></div>
     </div>
 
     <div class="footer">
-        <span class="online">🟢 系统运行中</span>
-        &nbsp;·&nbsp;
-        最后更新: <span id="lastUpdate" class="highlight">-</span>
-        &nbsp;·&nbsp;
-        🤖 AI Agent v3.0
+        <span><span class="online">🟢</span> 系统运行中</span>
+        <span class="sep">·</span>
+        <span>最后更新: <span id="lastUpdate" class="highlight">-</span></span>
+        <span class="sep">·</span>
+        <span>🤖 AI Agent v3.0</span>
+        <span class="sep">·</span>
+        <span>🛡️ 行业过滤已启用</span>
+        <span class="sep">·</span>
+        <span>📈 动态止盈止损</span>
+        <span class="sep">·</span>
+        <span>⏱️ 自动刷新 2分钟</span>
     </div>
 
     <script>
         let allStocks = [];
         let currentFilter = 'all';
+        let currentSort = 'score';
+        let searchTerm = '';
         
         function fetchData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('loading');
+            btn.textContent = '⏳...';
+            
             const grid = document.getElementById('stockGrid');
-            grid.innerHTML = `<div class="loading"><div class="spinner"></div><p style="margin-top:16px;">加载中...</p></div>`;
+            grid.innerHTML = `<div class="loading"><div class="spinner"></div><p style="margin-top:10px;">加载数据中...</p></div>`;
             
             fetch('/api/stocks')
-                .then(response => response.json())
+                .then(res => res.json())
                 .then(data => {
-                    console.log('API数据:', data);
                     if (data && data.stocks) {
                         allStocks = data.stocks;
-                        renderStats(allStocks);
-                        renderStocks(allStocks, currentFilter);
-                        document.getElementById('updateTime').textContent = '🔄 ' + (data.update_time || new Date().toLocaleString());
+                        applyFiltersAndRender();
+                        document.getElementById('updateTime').textContent = '🔄 ' + (data.update_time || '');
                         document.getElementById('lastUpdate').textContent = data.update_time || '-';
-                    } else {
-                        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#ff1744;">❌ 数据格式错误</div>';
                     }
+                    btn.classList.remove('loading');
+                    btn.textContent = '🔄 刷新';
                 })
                 .catch(error => {
-                    console.error('错误:', error);
-                    grid.innerHTML = `<div style="text-align:center;padding:40px;color:#ff1744;">❌ 加载失败: ${error.message}</div>`;
+                    console.error('加载失败:', error);
+                    grid.innerHTML = `<div style="text-align:center;padding:30px;color:#ff1744;">❌ 加载失败: ${error.message}</div>`;
+                    btn.classList.remove('loading');
+                    btn.textContent = '🔄 刷新';
                 });
         }
         
         function renderStats(stocks) {
             const total = stocks.length;
-            const buy = stocks.filter(s => s.score >= 65).length;
+            const buy = stocks.filter(s => s.score >= 65 && s.signal_type !== 'AVOID').length;
             const watch = stocks.filter(s => s.score >= 50 && s.score < 65).length;
-            const avoid = stocks.filter(s => s.score < 50).length;
+            const avoid = stocks.filter(s => s.score < 50 || s.signal_type === 'AVOID').length;
+            const strongBuy = stocks.filter(s => s.score >= 80 && s.signal_type !== 'AVOID').length;
+            const filtered = stocks.filter(s => s.sector_info && s.sector_info.includes('回避')).length;
             
             document.getElementById('totalCount').textContent = total;
             document.getElementById('buyCount').textContent = buy;
             document.getElementById('watchCount').textContent = watch;
             document.getElementById('avoidCount').textContent = avoid;
+            document.getElementById('strongBuyCount').textContent = strongBuy;
+            document.getElementById('filteredCount').textContent = filtered;
+            
+            document.getElementById('countAll').textContent = total;
+            document.getElementById('countStrongBuy').textContent = strongBuy;
+            document.getElementById('countBuy').textContent = buy - strongBuy;
+            document.getElementById('countWatch').textContent = watch;
+            document.getElementById('countAvoid').textContent = avoid;
+        }
+        
+        function setSort(sort) {
+            currentSort = sort;
+            document.querySelectorAll('.sort-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.sort === sort);
+            });
+            applyFiltersAndRender();
+        }
+        
+        function applySearch() {
+            searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            applyFiltersAndRender();
         }
         
         function setFilter(filter) {
@@ -258,36 +444,75 @@
             document.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.filter === filter);
             });
-            renderStocks(allStocks, filter);
+            applyFiltersAndRender();
         }
         
-        function renderStocks(stocks, filter) {
-            const grid = document.getElementById('stockGrid');
+        function applyFiltersAndRender() {
+            renderStats(allStocks);
             
-            let filtered = stocks;
-            if (filter !== 'all') {
-                filtered = stocks.filter(s => s.signal_type && s.signal_type.toLowerCase() === filter);
+            let filtered = [...allStocks];
+            
+            if (searchTerm) {
+                filtered = filtered.filter(s => 
+                    s.symbol.toLowerCase().includes(searchTerm) || 
+                    (s.name && s.name.toLowerCase().includes(searchTerm))
+                );
             }
             
-            if (!filtered || filtered.length === 0) {
-                grid.innerHTML = `<div style="text-align:center;padding:40px;color:#666;">📭 暂无数据</div>`;
+            if (currentFilter !== 'all') {
+                if (currentFilter === 'avoid') {
+                    filtered = filtered.filter(s => s.score < 50 || s.signal_type === 'AVOID');
+                } else {
+                    filtered = filtered.filter(s => s.signal_type && s.signal_type.toLowerCase() === currentFilter);
+                }
+            }
+            
+            filtered.sort((a, b) => {
+                if (currentSort === 'score') return (b.score || 0) - (a.score || 0);
+                if (currentSort === 'change') return (b.change || 0) - (a.change || 0);
+                if (currentSort === 'symbol') return (a.symbol || '').localeCompare(b.symbol || '');
+                return 0;
+            });
+            
+            renderStocks(filtered);
+        }
+        
+        function renderStocks(stocks) {
+            const grid = document.getElementById('stockGrid');
+            
+            if (!stocks || stocks.length === 0) {
+                grid.innerHTML = `<div style="text-align:center;padding:30px;color:#666;">📭 暂无匹配的股票</div>`;
                 return;
             }
             
+            const displayStocks = stocks.slice(0, 60);
+            
             let html = '';
-            filtered.forEach(s => {
+            displayStocks.forEach(s => {
                 const changeClass = s.change >= 0 ? 'up' : 'down';
                 const changeSign = s.change >= 0 ? '+' : '';
                 let scoreClass = s.score >= 80 ? 'high' : (s.score >= 65 ? 'medium' : 'low');
                 let signalClass = s.signal_type ? s.signal_type.toLowerCase() : 'watch';
                 let rrColor = (s.risk_reward_ratio || 0) >= 3 ? 'green' : ((s.risk_reward_ratio || 0) >= 1.5 ? 'gold' : 'red');
                 
+                let sectorInfo = s.sector_info || '';
+                let isAvoid = sectorInfo.includes('回避');
+                let isPriority = sectorInfo.includes('优先');
+                let cardClass = isAvoid ? 'card sector-avoid' : (isPriority ? 'card sector-priority' : 'card');
+                let sectorStatusClass = isAvoid ? 'avoid' : (isPriority ? 'priority' : 'neutral');
+                let sectorStatusText = isAvoid ? '🚫 回避' : (isPriority ? '✅ 优先' : '➖ 中性');
+                
+                let sectorDisplay = s.sector || 'Unknown';
+                if (sectorDisplay.length > 20) sectorDisplay = sectorDisplay.substring(0, 18) + '…';
+                
                 html += `
-                    <div class="card">
+                    <div class="${cardClass}">
                         <div class="top">
                             <div>
-                                <div class="symbol">${s.symbol || ''}</div>
+                                <div class="symbol">${s.symbol}</div>
                                 <div class="name">${s.name || ''}</div>
+                                <span class="sector-tag">${sectorDisplay}</span>
+                                <span class="sector-status ${sectorStatusClass}">${sectorStatusText}</span>
                             </div>
                             <div class="score-badge ${scoreClass}">${s.score || 0}</div>
                         </div>
@@ -295,29 +520,37 @@
                             <span class="price">$${s.price || 0}</span>
                             <span class="change ${changeClass}">${changeSign}${s.change || 0}%</span>
                         </div>
-                        <div class="signal ${signalClass}">${s.action || s.signal || ''}</div>
+                        <div class="signal ${signalClass}">${s.action || ''}</div>
                         
                         <div class="trade-plan">
                             <div class="row"><span class="label">💰 买入价</span><span class="value blue">$${s.entry_price || 0}</span></div>
-                            <div class="row"><span class="label">🛑 止损</span><span class="value red">$${s.stop_loss || 0}</span></div>
-                            <div class="row"><span class="label">🎯 止盈</span><span class="value green">$${s.take_profit || 0}</span></div>
+                            <div class="row"><span class="label">🛑 止损 (${s.stop_loss_pct || 0}%)</span><span class="value red">$${s.stop_loss || 0}</span></div>
+                            <div class="row"><span class="label">🎯 止盈 (${s.take_profit_pct || 0}%)</span><span class="value green">$${s.take_profit || 0}</span></div>
                             <div class="divider"></div>
                             <div class="row"><span class="label">📈 盈亏比</span><span class="value ${rrColor}">${s.risk_reward_ratio || 0}:1</span></div>
                             <div class="row"><span class="label">📦 仓位</span><span class="value blue">${s.position || '0%'}</span></div>
+                            <div class="row"><span class="label">📊 波动率</span><span class="value" style="color:#888;">${(s.volatility || 0) * 100}%</span></div>
                         </div>
                         
                         <div class="ma-info">
-                            MA5: $${s.ma5 || 0} · MA10: $${s.ma10 || 0} · MA20: $${s.ma20 || 0} · RSI: ${s.rsi || 0}
+                            <span>MA5: <span class="hl">$${s.ma5 || 0}</span></span>
+                            <span>MA10: $${s.ma10 || 0}</span>
+                            <span>MA20: $${s.ma20 || 0}</span>
+                            <span>RSI: ${s.rsi || 0}</span>
                         </div>
                     </div>
                 `;
             });
             
+            if (stocks.length > 60) {
+                html += `<div style="text-align:center;padding:12px;color:#666;grid-column:1/-1;font-size:12px;">📊 显示前60只，共 ${stocks.length} 只</div>`;
+            }
+            
             grid.innerHTML = html;
         }
         
         fetchData();
-        setInterval(fetchData, 60000);
+        setInterval(fetchData, 120000);
     </script>
 
 </body>
