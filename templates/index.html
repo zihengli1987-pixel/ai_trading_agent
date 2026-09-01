@@ -1,54 +1,324 @@
-// 在 index.html 的 <script> 中添加
-
-// ===== WebSocket 实时连接 =====
-const socket = io();
-
-socket.on('connect', function() {
-    console.log('✅ 已连接到服务器');
-    // 订阅特斯拉实时数据
-    socket.emit('subscribe', { symbol: 'TSLA' });
-});
-
-socket.on('stock_update', function(data) {
-    console.log('📊 实时数据更新:', data.symbol, '评分:', data.score);
-    
-    // 更新对应股票的卡片
-    updateStockCard(data);
-});
-
-function updateStockCard(data) {
-    // 找到对应的卡片并更新评分、价格、信号
-    const cards = document.querySelectorAll('.card');
-    cards.forEach(card => {
-        const symbolEl = card.querySelector('.symbol');
-        if (symbolEl && symbolEl.textContent === data.symbol) {
-            // 更新价格
-            const priceEl = card.querySelector('.price');
-            if (priceEl) priceEl.textContent = '$' + data.price;
-            
-            // 更新涨跌幅
-            const changeEl = card.querySelector('.change');
-            if (changeEl) {
-                changeEl.textContent = (data.change >= 0 ? '+' : '') + data.change + '%';
-                changeEl.className = 'change ' + (data.change >= 0 ? 'up' : 'down');
-            }
-            
-            // 更新评分
-            const badgeEl = card.querySelector('.score-badge');
-            if (badgeEl) {
-                badgeEl.textContent = data.score;
-                badgeEl.className = 'score-badge ' + (data.score >= 80 ? 'high' : data.score >= 65 ? 'medium' : 'low');
-            }
-            
-            // 更新信号
-            const signalEl = card.querySelector('.signal');
-            if (signalEl) {
-                signalEl.textContent = data.action;
-                signalEl.className = 'signal ' + data.signal_type.toLowerCase();
-            }
-            
-            // 更新交易计划
-            updateTradePlan(card, data);
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 AI Agent 交易仪表板</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e17;
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
         }
-    });
-}
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #1e2a3a;
+        }
+        .header h1 {
+            font-size: 28px;
+            background: linear-gradient(135deg, #00d4ff, #7b2ffc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header .subtitle { font-size: 14px; color: #666; }
+        .header .subtitle span { color: #00d4ff; }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #111b28;
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid #1e2a3a;
+            text-align: center;
+        }
+        .stat-card .number { font-size: 28px; font-weight: bold; }
+        .stat-card .label { font-size: 12px; color: #666; margin-top: 4px; }
+        .stat-card .number.green { color: #00c853; }
+        .stat-card .number.yellow { color: #ffab00; }
+        .stat-card .number.red { color: #ff1744; }
+        .stat-card .number.blue { color: #00d4ff; }
+        .stat-card .number.purple { color: #7b2ffc; }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #111b28;
+            border-radius: 12px;
+            padding: 18px 20px;
+            border: 1px solid #1e2a3a;
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-3px); border-color: #2a3a5a; }
+        .card .top { display: flex; justify-content: space-between; align-items: flex-start; }
+        .card .symbol { font-size: 18px; font-weight: bold; color: #00d4ff; }
+        .card .name { font-size: 12px; color: #666; margin-top: 2px; }
+        .card .score-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .card .score-badge.high { background: #00c853; color: #fff; }
+        .card .score-badge.medium { background: #ffab00; color: #000; }
+        .card .score-badge.low { background: #ff1744; color: #fff; }
+        .card .price-section { margin: 12px 0 4px 0; }
+        .card .price { font-size: 22px; font-weight: bold; }
+        .card .change { font-size: 14px; margin-left: 10px; }
+        .card .change.up { color: #00c853; }
+        .card .change.down { color: #ff1744; }
+        .card .signal { font-size: 14px; margin-top: 2px; }
+        .card .signal.strong_buy { color: #00c853; }
+        .card .signal.buy { color: #69f0ae; }
+        .card .signal.watch { color: #ffab00; }
+        .card .signal.avoid { color: #ff1744; }
+        .trade-plan {
+            background: #0d1520;
+            border-radius: 8px;
+            padding: 10px 14px;
+            margin-top: 12px;
+            border: 1px solid #1a2636;
+        }
+        .trade-plan .row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            padding: 2px 0;
+        }
+        .trade-plan .label { color: #666; }
+        .trade-plan .value { font-weight: bold; }
+        .trade-plan .value.green { color: #00c853; }
+        .trade-plan .value.red { color: #ff1744; }
+        .trade-plan .value.gold { color: #ffab00; }
+        .trade-plan .value.blue { color: #00d4ff; }
+        .trade-plan .divider { border-top: 1px solid #1a2636; margin: 4px 0; }
+        .card .ma-info {
+            font-size: 11px;
+            color: #555;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #1a2636;
+        }
+        .footer {
+            background: #111b28;
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid #1e2a3a;
+            text-align: center;
+            font-size: 14px;
+        }
+        .footer .online { color: #00c853; }
+        .footer .highlight { color: #00d4ff; }
+        .refresh-btn {
+            background: #1e2a3a;
+            border: none;
+            color: #e0e0e0;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .refresh-btn:hover { background: #2a3a5a; }
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #1e2a3a;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 600px) {
+            .header h1 { font-size: 20px; }
+            .grid { grid-template-columns: 1fr; }
+        }
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            background: #111b28;
+            border: 1px solid #1e2a3a;
+            color: #666;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: #00d4ff; color: #fff; }
+        .filter-btn.active { border-color: #00d4ff; color: #00d4ff; background: #0d1520; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>🤖 AI Agent 交易仪表板</h1>
+            <div class="subtitle">📊 实时监控 · 智能评分 · <span>自动推送</span></div>
+        </div>
+        <div style="text-align: right;">
+            <div id="updateTime" style="font-size: 14px; color: #666;">加载中...</div>
+            <button class="refresh-btn" onclick="fetchData()">🔄 刷新</button>
+        </div>
+    </div>
+
+    <div class="stats" id="stats">
+        <div class="stat-card"><div class="number blue" id="totalCount">-</div><div class="label">📊 监控股票</div></div>
+        <div class="stat-card"><div class="number green" id="buyCount">-</div><div class="label">🟢 买入信号</div></div>
+        <div class="stat-card"><div class="number yellow" id="watchCount">-</div><div class="label">🟡 观望</div></div>
+        <div class="stat-card"><div class="number red" id="avoidCount">-</div><div class="label">🔴 回避</div></div>
+    </div>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">📊 全部</button>
+        <button class="filter-btn" data-filter="strong_buy" onclick="setFilter('strong_buy')">🟢 强烈买入</button>
+        <button class="filter-btn" data-filter="buy" onclick="setFilter('buy')">🟢 买入</button>
+        <button class="filter-btn" data-filter="watch" onclick="setFilter('watch')">🟡 观望</button>
+        <button class="filter-btn" data-filter="avoid" onclick="setFilter('avoid')">🔴 回避</button>
+    </div>
+
+    <div class="grid" id="stockGrid">
+        <div class="loading"><div class="spinner"></div><p style="margin-top:16px;">加载中...</p></div>
+    </div>
+
+    <div class="footer">
+        <span class="online">🟢 系统运行中</span>
+        &nbsp;·&nbsp;
+        最后更新: <span id="lastUpdate" class="highlight">-</span>
+        &nbsp;·&nbsp;
+        🤖 AI Agent v3.0
+    </div>
+
+    <script>
+        let allStocks = [];
+        let currentFilter = 'all';
+        
+        function fetchData() {
+            const grid = document.getElementById('stockGrid');
+            grid.innerHTML = `<div class="loading"><div class="spinner"></div><p style="margin-top:16px;">加载中...</p></div>`;
+            
+            fetch('/api/stocks')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('API数据:', data);
+                    if (data && data.stocks) {
+                        allStocks = data.stocks;
+                        renderStats(allStocks);
+                        renderStocks(allStocks, currentFilter);
+                        document.getElementById('updateTime').textContent = '🔄 ' + (data.update_time || new Date().toLocaleString());
+                        document.getElementById('lastUpdate').textContent = data.update_time || '-';
+                    } else {
+                        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#ff1744;">❌ 数据格式错误</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('错误:', error);
+                    grid.innerHTML = `<div style="text-align:center;padding:40px;color:#ff1744;">❌ 加载失败: ${error.message}</div>`;
+                });
+        }
+        
+        function renderStats(stocks) {
+            const total = stocks.length;
+            const buy = stocks.filter(s => s.score >= 65).length;
+            const watch = stocks.filter(s => s.score >= 50 && s.score < 65).length;
+            const avoid = stocks.filter(s => s.score < 50).length;
+            
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('buyCount').textContent = buy;
+            document.getElementById('watchCount').textContent = watch;
+            document.getElementById('avoidCount').textContent = avoid;
+        }
+        
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            renderStocks(allStocks, filter);
+        }
+        
+        function renderStocks(stocks, filter) {
+            const grid = document.getElementById('stockGrid');
+            
+            let filtered = stocks;
+            if (filter !== 'all') {
+                filtered = stocks.filter(s => s.signal_type && s.signal_type.toLowerCase() === filter);
+            }
+            
+            if (!filtered || filtered.length === 0) {
+                grid.innerHTML = `<div style="text-align:center;padding:40px;color:#666;">📭 暂无数据</div>`;
+                return;
+            }
+            
+            let html = '';
+            filtered.forEach(s => {
+                const changeClass = s.change >= 0 ? 'up' : 'down';
+                const changeSign = s.change >= 0 ? '+' : '';
+                let scoreClass = s.score >= 80 ? 'high' : (s.score >= 65 ? 'medium' : 'low');
+                let signalClass = s.signal_type ? s.signal_type.toLowerCase() : 'watch';
+                let rrColor = (s.risk_reward_ratio || 0) >= 3 ? 'green' : ((s.risk_reward_ratio || 0) >= 1.5 ? 'gold' : 'red');
+                
+                html += `
+                    <div class="card">
+                        <div class="top">
+                            <div>
+                                <div class="symbol">${s.symbol || ''}</div>
+                                <div class="name">${s.name || ''}</div>
+                            </div>
+                            <div class="score-badge ${scoreClass}">${s.score || 0}</div>
+                        </div>
+                        <div class="price-section">
+                            <span class="price">$${s.price || 0}</span>
+                            <span class="change ${changeClass}">${changeSign}${s.change || 0}%</span>
+                        </div>
+                        <div class="signal ${signalClass}">${s.action || s.signal || ''}</div>
+                        
+                        <div class="trade-plan">
+                            <div class="row"><span class="label">💰 买入价</span><span class="value blue">$${s.entry_price || 0}</span></div>
+                            <div class="row"><span class="label">🛑 止损</span><span class="value red">$${s.stop_loss || 0}</span></div>
+                            <div class="row"><span class="label">🎯 止盈</span><span class="value green">$${s.take_profit || 0}</span></div>
+                            <div class="divider"></div>
+                            <div class="row"><span class="label">📈 盈亏比</span><span class="value ${rrColor}">${s.risk_reward_ratio || 0}:1</span></div>
+                            <div class="row"><span class="label">📦 仓位</span><span class="value blue">${s.position || '0%'}</span></div>
+                        </div>
+                        
+                        <div class="ma-info">
+                            MA5: $${s.ma5 || 0} · MA10: $${s.ma10 || 0} · MA20: $${s.ma20 || 0} · RSI: ${s.rsi || 0}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            grid.innerHTML = html;
+        }
+        
+        fetchData();
+        setInterval(fetchData, 60000);
+    </script>
+
+</body>
+</html>
